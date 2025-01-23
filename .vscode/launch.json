@@ -1,0 +1,17 @@
+{
+  "configurations": [
+    {
+      "name": "Debug",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/goose_dsp",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "preLaunchTask": "cargo build",
+      "sourceLanguages": [
+        "rust"
+      ]
+    },
+  ]
+}
