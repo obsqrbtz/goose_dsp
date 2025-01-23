@@ -1,5 +1,6 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use eframe::egui;
+use egui_plot::Plot;
 use hound;
 use rfd::FileDialog;
 use std::sync::{Arc, Mutex};
@@ -72,7 +73,24 @@ impl GooseDsp {
 
     fn set_stream(&mut self) {
         self.error_message = None;
-        let host = cpal::default_host();
+
+        // Try ASIO host first, fall back to default if not available
+        let host = match cpal::host_from_id(cpal::HostId::Asio) {
+            Ok(host) => host,
+            Err(err) => {
+                println!(
+                    "Failed to initialize ASIO host: {}. Falling back to default host.",
+                    err
+                );
+                cpal::default_host()
+            }
+        };
+
+        // Print available hosts for debugging
+        println!("Available hosts:");
+        for host_id in cpal::available_hosts() {
+            println!("  {}", host_id.name());
+        }
 
         if self.selected_input_device.is_none() && self.selected_output_device.is_none() {
             self.error_message = Some("Please select at least one device".to_string());
@@ -158,6 +176,7 @@ impl GooseDsp {
                     move |err| {
                         eprintln!("Input stream error: {}", err);
                     },
+                    None,
                 )
                 .expect("Failed to build input stream");
 
@@ -181,6 +200,7 @@ impl GooseDsp {
                     move |err| {
                         eprintln!("Output stream error: {}", err);
                     },
+                    None,
                 )
                 .expect("Failed to build output stream");
 
@@ -279,7 +299,7 @@ impl GooseDsp {
     fn plot_waveform(&self, ui: &mut egui::Ui, samples: &[f32], title: &str) {
         const MAX_POINTS: usize = 1000;
 
-        let plot = egui::plot::Plot::new(title)
+        let plot = egui_plot::Plot::new(title)
             .view_aspect(2.0)
             .show_axes([false, true])
             .show_background(true)
@@ -290,7 +310,7 @@ impl GooseDsp {
 
         let step = (samples.len() / MAX_POINTS).max(1);
 
-        let line = egui::plot::Line::new(egui::plot::PlotPoints::from_iter(
+        let line = egui_plot::Line::new(egui_plot::PlotPoints::from_iter(
             samples
                 .iter()
                 .step_by(step)
@@ -350,11 +370,28 @@ impl GooseDsp {
                     }
                 },
                 move |err| eprintln!("Playback error: {}", err),
+                None, // Latency parameter
             )
             .unwrap();
 
         stream.play().unwrap();
         self.playback_stream = Some(stream);
+    }
+
+    fn is_asio_available() -> bool {
+        cpal::host_from_id(cpal::HostId::Asio).is_ok()
+    }
+
+    fn handle_asio_error(err: cpal::BuildStreamError) -> String {
+        match err {
+            cpal::BuildStreamError::DeviceNotAvailable => {
+                "ASIO device not available or in use by another application".to_string()
+            }
+            cpal::BuildStreamError::StreamConfigNotSupported => {
+                "The ASIO device doesn't support the requested configuration".to_string()
+            }
+            _ => format!("ASIO error: {}", err),
+        }
     }
 }
 
@@ -362,6 +399,12 @@ impl eframe::App for GooseDsp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Device settings");
+
+            if Self::is_asio_available() {
+                ui.label("ASIO: Available ✓");
+            } else {
+                ui.label("ASIO: Not available ✗");
+            }
 
             if let Some(error) = &self.error_message {
                 ui.colored_label(egui::Color32::RED, error);
