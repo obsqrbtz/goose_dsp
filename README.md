@@ -39,6 +39,7 @@ Goose DSP is a guitar amp simulator built in Rust.
    ```bash
    cargo build
    ```
+> **Notice:** `clang` is required for building ASIO SDK. LLVM should be installed and `CXX` variable should not be pointing to any other compiler. For more information refer to [CPAL docs](https://github.com/RustAudio/cpal/tree/master?tab=readme-ov-file#asio-on-windows).
 
 3. **Run the application:**
 
