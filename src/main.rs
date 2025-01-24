@@ -1,7 +1,6 @@
 mod goose_dsp;
 mod goose_dsp_core;
 
-use eframe::egui;
 use goose_dsp::GooseDsp;
 
 fn main() {

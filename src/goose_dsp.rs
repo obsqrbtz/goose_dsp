@@ -1,6 +1,5 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use eframe::egui;
-use egui_plot::Plot;
 use hound;
 use rfd::FileDialog;
 use std::sync::{Arc, Mutex};
@@ -34,7 +33,11 @@ pub struct GooseDsp {
 
 impl GooseDsp {
     pub fn new() -> Self {
-        let host = cpal::default_host();
+        let mut host = cpal::default_host();
+        #[cfg(target_os = "windows")]
+        {
+            host = cpal::host_from_id(cpal::HostId::Asio).expect("failed to initialise ASIO host");
+        }
         let input_devices = host
             .input_devices()
             .unwrap()
@@ -85,12 +88,6 @@ impl GooseDsp {
                 cpal::default_host()
             }
         };
-
-        // Print available hosts for debugging
-        println!("Available hosts:");
-        for host_id in cpal::available_hosts() {
-            println!("  {}", host_id.name());
-        }
 
         if self.selected_input_device.is_none() && self.selected_output_device.is_none() {
             self.error_message = Some("Please select at least one device".to_string());
