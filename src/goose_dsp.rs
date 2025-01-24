@@ -33,10 +33,14 @@ pub struct GooseDsp {
 
 impl GooseDsp {
     pub fn new() -> Self {
-        let mut host = cpal::default_host();
+        let host;
         #[cfg(target_os = "windows")]
         {
             host = cpal::host_from_id(cpal::HostId::Asio).expect("failed to initialise ASIO host");
+        }
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            host = cpal::default_host();
         }
         let input_devices = host
             .input_devices()
