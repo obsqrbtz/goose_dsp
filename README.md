@@ -30,7 +30,7 @@ Goose DSP is a guitar amp simulator built in Rust.
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/goose_dsp.git
+   git clone https://github.com/obsqrbtz/goose_dsp.git
    cd goose_dsp
    ```
 
