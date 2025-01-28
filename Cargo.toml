@@ -3,6 +3,10 @@ name = "goose_dsp"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "echo"
+path = "src/echo/echo.rs"
+
 [dependencies]
 cpal = "0.15.3"
 eframe = { version = "0.30.0", features = ["default_fonts"] }

@@ -6,6 +6,9 @@
       "request": "launch",
       "program": "${workspaceFolder}/target/debug/goose_dsp",
       "args": [],
+      "env": {
+        "RUST_BACKTRACE": "1"
+      },
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
       "preLaunchTask": "cargo build",
@@ -13,5 +16,21 @@
         "rust"
       ]
     },
+    {
+      "name": "Echo",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/target/debug/echo",
+      "args": [],
+      "env": {
+        "RUST_BACKTRACE": "1"
+      },
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "preLaunchTask": "cargo build",
+      "sourceLanguages": [
+        "rust"
+      ]
+    }
   ]
 }

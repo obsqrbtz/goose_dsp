@@ -6,15 +6,17 @@ use std::sync::{Arc, Mutex};
 
 use crate::goose_dsp_core::process_audio;
 
-#[derive(Default)]
 pub struct GooseDsp {
-    available_input_devices: Vec<String>,
-    available_output_devices: Vec<String>,
-    selected_input_device: Option<String>,
-    selected_output_device: Option<String>,
+    available_devices: Vec<String>,
+    selected_device: Option<String>,
+    selected_input_channel: usize,
+    selected_sample_rate: u32,
+    selected_bit_depth: usize,
+    selected_buffer_size: u32,
     stream: Option<cpal::Stream>,
     output_stream: Option<cpal::Stream>,
     stream_config: Arc<Mutex<Option<cpal::StreamConfig>>>,
+    host: cpal::Host,
     input_volume: f32,
     output_volume: f32,
     overdrive_enabled: bool,
@@ -33,33 +35,28 @@ pub struct GooseDsp {
 
 impl GooseDsp {
     pub fn new() -> Self {
-        let host;
         #[cfg(target_os = "windows")]
-        {
-            host = cpal::host_from_id(cpal::HostId::Asio).expect("failed to initialise ASIO host");
-        }
+        let host = cpal::host_from_id(cpal::HostId::Asio).expect("failed to initialise ASIO host");
         #[cfg(any(target_os = "linux", target_os = "macos"))]
-        {
-            host = cpal::default_host();
-        }
-        let input_devices = host
-            .input_devices()
+        let host = cpal::default_host();
+
+        let devices: Vec<String> = host
+            .devices()
             .unwrap()
-            .map(|d| d.name().unwrap())
-            .collect();
-        let output_devices = host
-            .output_devices()
-            .unwrap()
+            .filter(|d| d.supported_input_configs().is_ok() && d.supported_output_configs().is_ok())
             .map(|d| d.name().unwrap())
             .collect();
 
         GooseDsp {
-            selected_input_device: None,
-            selected_output_device: None,
+            host,
+            available_devices: devices,
+            selected_device: None,
+            selected_input_channel: 0,
+            selected_sample_rate: 48000,
+            selected_bit_depth: 32,
+            selected_buffer_size: 256,
             stream: None,
             output_stream: None,
-            available_input_devices: input_devices,
-            available_output_devices: output_devices,
             stream_config: Arc::new(Mutex::new(None)),
             input_volume: 1.0,
             output_volume: 0.9,
@@ -81,161 +78,155 @@ impl GooseDsp {
     fn set_stream(&mut self) {
         self.error_message = None;
 
-        // Try ASIO host first, fall back to default if not available
-        let host = match cpal::host_from_id(cpal::HostId::Asio) {
-            Ok(host) => host,
-            Err(err) => {
-                println!(
-                    "Failed to initialize ASIO host: {}. Falling back to default host.",
-                    err
-                );
-                cpal::default_host()
-            }
-        };
-
-        if self.selected_input_device.is_none() && self.selected_output_device.is_none() {
-            self.error_message = Some("Please select at least one device".to_string());
+        if self.selected_device.is_none() {
+            self.error_message = Some("Please select a device".to_string());
             return;
         }
 
-        if let Some(input_device_name) = &self.selected_input_device {
-            let input_device = match host
-                .input_devices()
-                .unwrap()
-                .find(|d| d.name().unwrap() == *input_device_name)
-            {
-                Some(device) => device,
-                None => {
-                    self.error_message = Some("Selected input device not found".to_string());
-                    return;
-                }
-            };
+        let device_name = self.selected_device.as_ref().unwrap();
+        let device = match self
+            .host
+            .devices()
+            .unwrap()
+            .find(|d| d.name().unwrap() == *device_name)
+        {
+            Some(device) => device,
+            None => {
+                self.error_message = Some("Selected device not found".to_string());
+                return;
+            }
+        };
 
-            let mut input_configs = input_device
-                .supported_input_configs()
-                .expect("Error getting input configs");
-            let mut output_configs: Vec<Vec<_>> = host
-                .output_devices()
-                .unwrap()
-                .map(|d| {
-                    d.supported_output_configs()
-                        .expect("Error getting output configs")
-                        .collect()
-                })
-                .collect();
-
-            let supported_config = input_configs
-                .find(|input_config| {
-                    let input_max_sample_rate = input_config.max_sample_rate();
-                    let input_min_sample_rate = input_config.min_sample_rate();
-
-                    output_configs.iter().any(|configs| {
-                        configs.iter().any(|output_config| {
-                            let output_max_sample_rate = output_config.max_sample_rate();
-                            let output_min_sample_rate = output_config.min_sample_rate();
-
-                            // Check if there's an overlapping sample rate range
-                            input_max_sample_rate >= output_min_sample_rate
-                                && input_min_sample_rate <= output_max_sample_rate
-                                && input_config.channels() == output_config.channels()
-                        })
-                    })
-                })
-                .expect("No compatible configuration found");
-
-            let sample_rate = supported_config.min_sample_rate();
-            let config = supported_config.with_sample_rate(sample_rate).config();
-
-            *self.stream_config.lock().unwrap() = Some(config.clone());
-
-            let stream_config = Arc::clone(&self.stream_config);
-            let input_volume = self.input_volume;
-            let output_volume = self.output_volume;
-            let overdrive_enabled = self.overdrive_enabled;
-            let threshold = self.overdrive_threshold;
-            let gain = self.overdrive_gain;
-
-            let processed_audio = Arc::new(Mutex::new(Vec::new()));
-            let processed_audio_clone = Arc::clone(&processed_audio);
-
-            let input_stream = input_device
-                .build_input_stream(
-                    &config,
-                    move |data: &[f32], _: &cpal::InputCallbackInfo| {
-                        let config = stream_config.lock().unwrap();
-                        let processed = process_audio(
-                            data,
-                            &config,
-                            input_volume,
-                            output_volume,
-                            overdrive_enabled,
-                            threshold,
-                            gain,
+        // Find a configuration that matches our desired sample rate
+        let supported_config = match device.supported_input_configs() {
+            Ok(configs) => {
+                let mut matching_config = None;
+                for config in configs {
+                    if config.channels() == 2
+                        && config.min_sample_rate().0 <= self.selected_sample_rate
+                        && config.max_sample_rate().0 >= self.selected_sample_rate
+                    {
+                        matching_config = Some(
+                            config.with_sample_rate(cpal::SampleRate(self.selected_sample_rate)),
                         );
-                        *processed_audio.lock().unwrap() = processed;
-                    },
-                    move |err| {
-                        eprintln!("Input stream error: {}", err);
-                    },
-                    None,
-                )
-                .expect("Failed to build input stream");
-
-            let output_stream = host
-                .output_devices()
-                .unwrap()
-                .find(|d| d.name().unwrap() == *self.selected_output_device.as_ref().unwrap())
-                .expect("Output device not found")
-                .build_output_stream(
-                    &config,
-                    move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                        let processed = processed_audio_clone.lock().unwrap();
-                        if !processed.is_empty() {
-                            data.iter_mut().zip(processed.iter().cycle()).for_each(
-                                |(out, processed)| {
-                                    *out = *processed;
-                                },
-                            );
-                        }
-                    },
-                    move |err| {
-                        eprintln!("Output stream error: {}", err);
-                    },
-                    None,
-                )
-                .expect("Failed to build output stream");
-
-            input_stream.play().unwrap();
-            output_stream.play().unwrap();
-
-            self.stream = Some(input_stream);
-            self.output_stream = Some(output_stream);
-
-            println!("Input device supported configs:");
-            for config in input_device.supported_input_configs().unwrap() {
-                println!("{:?}", config);
-            }
-
-            println!("Output device supported configs:");
-            for config in host.output_devices().unwrap() {
-                let configs: Vec<_> = config.supported_output_configs().unwrap().collect();
-                println!("{:?}", configs);
-            }
-        }
-
-        if let Some(output_device_name) = &self.selected_output_device {
-            let output_device = match host
-                .output_devices()
-                .unwrap()
-                .find(|d| d.name().unwrap() == *output_device_name)
-            {
-                Some(device) => device,
-                None => {
-                    self.error_message = Some("Selected output device not found".to_string());
-                    return;
+                        break;
+                    }
                 }
-            };
+
+                matching_config.unwrap_or_else(|| {
+                    // If no exact match found, use the first available config
+                    device
+                        .supported_input_configs()
+                        .unwrap()
+                        .next()
+                        .unwrap()
+                        .with_sample_rate(cpal::SampleRate(44100))
+                })
+            }
+            Err(e) => {
+                self.error_message = Some(format!("Error getting supported configs: {}", e));
+                return;
+            }
+        };
+
+        // Use the supported configuration instead of creating our own
+        let config = supported_config.config();
+        println!("Using configuration:");
+        println!("  Channels: {}", config.channels);
+        println!("  Sample Rate: {} Hz", config.sample_rate.0);
+        println!("  Buffer Size: {:?}", config.buffer_size);
+
+        let stream_config = Arc::clone(&self.stream_config);
+        let input_volume = self.input_volume;
+        let output_volume = self.output_volume;
+        let overdrive_enabled = self.overdrive_enabled;
+        let threshold = self.overdrive_threshold;
+        let gain = self.overdrive_gain;
+        let selected_channel = self.selected_input_channel;
+
+        let processed_audio = Arc::new(Mutex::new(Vec::new()));
+        let processed_audio_clone = Arc::clone(&processed_audio);
+
+        // Build input stream with channel selection
+        let input_stream = match device.build_input_stream(
+            &config,
+            move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                let config = stream_config.lock().unwrap();
+                // Extract data from the selected channel
+                let channel_data: Vec<f32> = data
+                    .chunks(2)
+                    .map(|chunk| chunk[selected_channel])
+                    .collect();
+
+                // Calculate RMS level
+                let rms = (channel_data.iter().map(|x| x * x).sum::<f32>()
+                    / channel_data.len() as f32)
+                    .sqrt();
+                println!("Input level: {:.2} dB", 20.0 * rms.log10());
+
+                let processed = process_audio(
+                    &channel_data,
+                    &config,
+                    input_volume,
+                    output_volume,
+                    overdrive_enabled,
+                    threshold,
+                    gain,
+                );
+                *processed_audio.lock().unwrap() = processed;
+            },
+            move |err| {
+                eprintln!("Input stream error: {}", err);
+            },
+            None,
+        ) {
+            Ok(stream) => stream,
+            Err(err) => {
+                self.error_message = Some(format!("Failed to build input stream: {}", err));
+                return;
+            }
+        };
+
+        // Build output stream using the same device and configuration
+        let output_stream = match device.build_output_stream(
+            &config,
+            move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                let processed = processed_audio_clone.lock().unwrap();
+                if !processed.is_empty() {
+                    // Duplicate the processed mono signal to both output channels
+                    data.chunks_mut(2).zip(processed.iter().cycle()).for_each(
+                        |(chunk, &sample)| {
+                            chunk[0] = sample;
+                            chunk[1] = sample;
+                        },
+                    );
+                }
+            },
+            move |err| {
+                eprintln!("Output stream error: {}", err);
+            },
+            None,
+        ) {
+            Ok(stream) => stream,
+            Err(err) => {
+                self.error_message = Some(format!("Failed to build output stream: {}", err));
+                return;
+            }
+        };
+
+        // Start the streams
+        if let Err(err) = input_stream.play() {
+            self.error_message = Some(format!("Failed to start input stream: {}", err));
+            return;
         }
+
+        if let Err(err) = output_stream.play() {
+            self.error_message = Some(format!("Failed to start output stream: {}", err));
+            return;
+        }
+
+        self.stream = Some(input_stream);
+        self.output_stream = Some(output_stream);
     }
 
     fn process_wav_file(&mut self) {
@@ -324,25 +315,25 @@ impl GooseDsp {
     }
 
     fn play_samples(&mut self, samples: Vec<f32>) {
-        if self.selected_output_device.is_none() {
-            self.error_message = Some("Please select an output device".to_string());
+        if self.selected_device.is_none() {
+            self.error_message = Some("Please select a device".to_string());
             return;
         }
 
         self.playback_stream = None;
 
-        let host = cpal::default_host();
-        let output_device = host
-            .output_devices()
+        let device = self
+            .host
+            .devices()
             .unwrap()
-            .find(|d| d.name().unwrap() == *self.selected_output_device.as_ref().unwrap())
-            .expect("Output device not found");
+            .find(|d| d.name().unwrap() == *self.selected_device.as_ref().unwrap())
+            .expect("Device not found");
 
-        let supported_config = output_device
-            .supported_output_configs()
+        let supported_config = device
+            .supported_input_configs()
             .unwrap()
-            .find(|config| config.channels() == 1 || config.channels() == 2)
-            .expect("No supported output config found");
+            .find(|config| config.channels() == 2)
+            .expect("No supported input config found");
 
         let sample_rate = supported_config.min_sample_rate();
         let config = supported_config.with_sample_rate(sample_rate).config();
@@ -353,7 +344,7 @@ impl GooseDsp {
         let sample_index_clone = Arc::clone(&sample_index);
         let channels = config.channels as usize;
 
-        let stream = output_device
+        let stream = device
             .build_output_stream(
                 &config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
@@ -362,7 +353,6 @@ impl GooseDsp {
                         if *idx >= samples_clone.len() {
                             frame.iter_mut().for_each(|sample| *sample = 0.0);
                         } else {
-                            // Copy sample to all channels
                             frame.iter_mut().for_each(|sample| {
                                 *sample = samples_clone[*idx] * 0.5;
                             });
@@ -371,7 +361,7 @@ impl GooseDsp {
                     }
                 },
                 move |err| eprintln!("Playback error: {}", err),
-                None, // Latency parameter
+                None,
             )
             .unwrap();
 
@@ -414,33 +404,71 @@ impl eframe::App for GooseDsp {
             ui.group(|ui| {
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
-                        ui.label("Input Device:");
-                        ui.label("Output Device:");
+                        ui.label("Audio Device:");
+                        ui.label("Input Channel:");
+                        ui.label("Sample Rate:");
+                        ui.label("Bit Depth:");
+                        ui.label("Buffer Size:");
                     });
 
                     ui.vertical(|ui| {
-                        egui::ComboBox::from_id_source("input_device")
-                            .selected_text(self.selected_input_device.clone().unwrap_or_default())
+                        egui::ComboBox::from_id_source("audio_device")
+                            .selected_text(self.selected_device.clone().unwrap_or_default())
                             .width(350.0)
                             .show_ui(ui, |ui| {
-                                for device in &self.available_input_devices {
+                                for device in &self.available_devices {
                                     ui.selectable_value(
-                                        &mut self.selected_input_device,
+                                        &mut self.selected_device,
                                         Some(device.clone()),
                                         device,
                                     );
                                 }
                             });
 
-                        egui::ComboBox::from_id_source("output_device")
-                            .selected_text(self.selected_output_device.clone().unwrap_or_default())
-                            .width(350.0)
+                        egui::ComboBox::from_id_source("input_channel")
+                            .selected_text(format!("Channel {}", self.selected_input_channel + 1))
                             .show_ui(ui, |ui| {
-                                for device in &self.available_output_devices {
+                                for i in 0..2 {
                                     ui.selectable_value(
-                                        &mut self.selected_output_device,
-                                        Some(device.clone()),
-                                        device,
+                                        &mut self.selected_input_channel,
+                                        i,
+                                        format!("Channel {}", i + 1),
+                                    );
+                                }
+                            });
+
+                        egui::ComboBox::from_id_source("sample_rate")
+                            .selected_text(format!("{} Hz", self.selected_sample_rate))
+                            .show_ui(ui, |ui| {
+                                for rate in [44100, 48000, 88200, 96000] {
+                                    ui.selectable_value(
+                                        &mut self.selected_sample_rate,
+                                        rate,
+                                        format!("{} Hz", rate),
+                                    );
+                                }
+                            });
+
+                        egui::ComboBox::from_id_source("bit_depth")
+                            .selected_text(format!("{} bit", self.selected_bit_depth))
+                            .show_ui(ui, |ui| {
+                                for depth in [16, 24, 32] {
+                                    ui.selectable_value(
+                                        &mut self.selected_bit_depth,
+                                        depth,
+                                        format!("{} bit", depth),
+                                    );
+                                }
+                            });
+
+                        egui::ComboBox::from_id_source("buffer_size")
+                            .selected_text(format!("{} samples", self.selected_buffer_size))
+                            .show_ui(ui, |ui| {
+                                for size in [64, 128, 256, 512, 1024] {
+                                    ui.selectable_value(
+                                        &mut self.selected_buffer_size,
+                                        size,
+                                        format!("{} samples", size),
                                     );
                                 }
                             });
@@ -527,5 +555,11 @@ impl eframe::App for GooseDsp {
                 }
             });
         });
+    }
+}
+
+impl Default for GooseDsp {
+    fn default() -> Self {
+        Self::new()
     }
 }
