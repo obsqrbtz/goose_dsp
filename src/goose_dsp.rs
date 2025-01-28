@@ -36,7 +36,13 @@ pub struct GooseDsp {
 impl GooseDsp {
     pub fn new() -> Self {
         #[cfg(target_os = "windows")]
-        let host = cpal::host_from_id(cpal::HostId::Asio).expect("failed to initialise ASIO host");
+        let host = match cpal::host_from_id(cpal::HostId::Asio) {
+            Ok(host) => host,
+            Err(_) => {
+                eprintln!("Failed to initialise ASIO host, falling back to default host.");
+                cpal::default_host()
+            }
+        };
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         let host = cpal::default_host();
 
