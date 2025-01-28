@@ -1,7 +1,6 @@
-mod goose_dsp;
-mod goose_dsp_core;
+mod app;
 
-use goose_dsp::GooseDsp;
+use app::GooseDsp;
 
 fn main() {
     let app = GooseDsp::new();
