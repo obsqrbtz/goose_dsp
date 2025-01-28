@@ -9,6 +9,8 @@ mod ui;
 mod wav;
 mod waveform;
 
+use dsp::params::SharedParams;
+
 pub struct GooseDsp {
     available_devices: Vec<String>,
     selected_device: Option<String>,
@@ -34,6 +36,13 @@ pub struct GooseDsp {
     is_playing_original: bool,
     is_playing_processed: bool,
     playback_stream: Option<cpal::Stream>,
+    audio_params: SharedParams,
+    eq_enabled: bool,
+    eq_low: f32,
+    eq_mid: f32,
+    eq_high: f32,
+    gate_enabled: bool,
+    gate_threshold: f32,
 }
 
 impl GooseDsp {
@@ -56,6 +65,14 @@ impl GooseDsp {
             .map(|d| d.name().unwrap())
             .collect();
 
+        let audio_params = Arc::new(Mutex::new(dsp::params::AudioParams::new(
+            1.0,  // input_volume
+            1.0,  // output_volume
+            true, // overdrive_enabled
+            0.1,  // threshold
+            3.00, // gain
+        )));
+
         GooseDsp {
             host,
             available_devices: devices,
@@ -68,10 +85,10 @@ impl GooseDsp {
             output_stream: None,
             stream_config: Arc::new(Mutex::new(None)),
             input_volume: 1.0,
-            output_volume: 0.9,
+            output_volume: 1.0,
             overdrive_enabled: true,
-            overdrive_threshold: 0.0001,
-            overdrive_gain: 500.0,
+            overdrive_threshold: 0.1,
+            overdrive_gain: 3.00,
             input_file_path: String::new(),
             output_file_path: String::new(),
             source_samples: Vec::new(),
@@ -81,6 +98,13 @@ impl GooseDsp {
             is_playing_original: false,
             is_playing_processed: false,
             playback_stream: None,
+            audio_params,
+            eq_enabled: false,
+            eq_low: 1.0,
+            eq_mid: 1.0,
+            eq_high: 1.0,
+            gate_enabled: false,
+            gate_threshold: -40.0,
         }
     }
 }

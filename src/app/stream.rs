@@ -62,6 +62,7 @@ impl GooseDsp {
         let threshold = self.overdrive_threshold;
         let gain = self.overdrive_gain;
         let selected_channel = self.selected_input_channel;
+        let audio_params = Arc::clone(&self.audio_params);
 
         let processed_audio = Arc::new(Mutex::new(Vec::new()));
         let processed_audio_clone = Arc::clone(&processed_audio);
@@ -84,6 +85,7 @@ impl GooseDsp {
                         overdrive_enabled,
                         threshold,
                         gain,
+                        &audio_params,
                     );
                     *processed_audio.lock().unwrap() = processed;
                 },

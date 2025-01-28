@@ -34,6 +34,7 @@ impl GooseDsp {
                 self.overdrive_enabled,
                 self.overdrive_threshold,
                 self.overdrive_gain,
+                &self.audio_params,
             );
 
             println!("\nFirst 10 processed samples:");
