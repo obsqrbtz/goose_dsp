@@ -4,7 +4,7 @@ use cpal::StreamConfig;
 
 pub fn process_audio(
     data: &[f32],
-    config: &Option<StreamConfig>,
+    _config: &Option<StreamConfig>, // remove underscore if will be used
     input_volume: f32,
     output_volume: f32,
     overdrive_enabled: bool,

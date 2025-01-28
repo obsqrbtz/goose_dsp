@@ -147,11 +147,6 @@ impl GooseDsp {
                         .map(|chunk| chunk[selected_channel] as f32 / i32::MAX as f32)
                         .collect();
 
-                    let rms = (channel_data.iter().map(|x| x * x).sum::<f32>()
-                        / channel_data.len() as f32)
-                        .sqrt();
-                    println!("Input level: {:.2} dB", 20.0 * rms.log10());
-
                     let processed = process_audio(
                         &channel_data,
                         &config,
@@ -195,7 +190,8 @@ impl GooseDsp {
         if !self.input_file_path.is_empty() && !self.output_file_path.is_empty() {
             let mut reader = hound::WavReader::open(&self.input_file_path).unwrap();
             let spec = reader.spec();
-            let mut samples: Vec<f32> = reader
+            // WARN: not sure if it should not be mutable. Check later.
+            let samples: Vec<f32> = reader
                 .samples::<i16>()
                 .map(|s| s.unwrap() as f32 / i16::MAX as f32)
                 .collect();
@@ -306,7 +302,8 @@ impl GooseDsp {
 
         let samples = Arc::new(samples);
         let samples_clone = Arc::clone(&samples);
-        let mut sample_index = Arc::new(Mutex::new(0));
+        // WARN: not sure if it should not be mutable. Check later.
+        let sample_index = Arc::new(Mutex::new(0));
         let sample_index_clone = Arc::clone(&sample_index);
         let channels = config.channels as usize;
 
@@ -334,34 +331,12 @@ impl GooseDsp {
         stream.play().unwrap();
         self.playback_stream = Some(stream);
     }
-
-    fn is_asio_available() -> bool {
-        cpal::host_from_id(cpal::HostId::Asio).is_ok()
-    }
-
-    fn handle_asio_error(err: cpal::BuildStreamError) -> String {
-        match err {
-            cpal::BuildStreamError::DeviceNotAvailable => {
-                "ASIO device not available or in use by another application".to_string()
-            }
-            cpal::BuildStreamError::StreamConfigNotSupported => {
-                "The ASIO device doesn't support the requested configuration".to_string()
-            }
-            _ => format!("ASIO error: {}", err),
-        }
-    }
 }
 
 impl eframe::App for GooseDsp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Device settings");
-
-            if Self::is_asio_available() {
-                ui.label("ASIO: Available ✓");
-            } else {
-                ui.label("ASIO: Not available ✗");
-            }
 
             if let Some(error) = &self.error_message {
                 ui.colored_label(egui::Color32::RED, error);
@@ -378,7 +353,7 @@ impl eframe::App for GooseDsp {
                     });
 
                     ui.vertical(|ui| {
-                        egui::ComboBox::from_id_source("audio_device")
+                        egui::ComboBox::from_id_salt("audio_device")
                             .selected_text(self.selected_device.clone().unwrap_or_default())
                             .width(350.0)
                             .show_ui(ui, |ui| {
@@ -391,7 +366,7 @@ impl eframe::App for GooseDsp {
                                 }
                             });
 
-                        egui::ComboBox::from_id_source("input_channel")
+                        egui::ComboBox::from_id_salt("input_channel")
                             .selected_text(format!("Channel {}", self.selected_input_channel + 1))
                             .show_ui(ui, |ui| {
                                 for i in 0..2 {
@@ -403,7 +378,7 @@ impl eframe::App for GooseDsp {
                                 }
                             });
 
-                        egui::ComboBox::from_id_source("sample_rate")
+                        egui::ComboBox::from_id_salt("sample_rate")
                             .selected_text(format!("{} Hz", self.selected_sample_rate))
                             .show_ui(ui, |ui| {
                                 for rate in [44100, 48000, 88200, 96000] {
@@ -415,7 +390,7 @@ impl eframe::App for GooseDsp {
                                 }
                             });
 
-                        egui::ComboBox::from_id_source("bit_depth")
+                        egui::ComboBox::from_id_salt("bit_depth")
                             .selected_text(format!("{} bit", self.selected_bit_depth))
                             .show_ui(ui, |ui| {
                                 for depth in [16, 24, 32] {
@@ -427,7 +402,7 @@ impl eframe::App for GooseDsp {
                                 }
                             });
 
-                        egui::ComboBox::from_id_source("buffer_size")
+                        egui::ComboBox::from_id_salt("buffer_size")
                             .selected_text(format!("{} samples", self.selected_buffer_size))
                             .show_ui(ui, |ui| {
                                 for size in [64, 128, 256, 512, 1024] {
