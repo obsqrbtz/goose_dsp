@@ -11,10 +11,12 @@ Goose DSP is a guitar amp simulator built in Rust.
 - [License](#license)
 - [Acknowledgments](#acknowledgments)
 
-## Features
+## TODO
 
-- [x] Select and manage input/output audio devices
+- [x] Select and manage audio devices
 - [x] Overdrive
+- [ ] Get rid of audio glitches
+- [ ] Linux and macos support
 - [ ] EQ
 - [ ] Impulse responses or proper cab simulation
 - [ ] Noise gate
