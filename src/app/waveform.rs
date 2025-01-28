@@ -3,7 +3,7 @@ use eframe::egui;
 pub struct Plot;
 
 impl Plot {
-    pub fn draw(ui: &mut egui::Ui, samples: &[f32], title: &str) {
+    pub fn draw(ui: &mut egui::Ui, samples: &[i32], title: &str) {
         const MAX_POINTS: usize = 1000;
 
         let plot = egui_plot::Plot::new(title)
@@ -22,7 +22,7 @@ impl Plot {
                 .iter()
                 .step_by(step)
                 .enumerate()
-                .map(|(i, &sample)| [i as f64 * step as f64, sample as f64]),
+                .map(|(i, &sample)| [i as f64 * step as f64, sample as f64 / i32::MAX as f64]),
         ))
         .color(egui::Color32::BLUE);
 

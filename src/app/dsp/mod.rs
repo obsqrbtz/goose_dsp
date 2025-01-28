@@ -2,20 +2,30 @@ pub mod overdrive;
 use cpal::StreamConfig;
 
 pub fn process_audio(
-    data: &[f32],
-    _config: &Option<StreamConfig>, // remove underscore if will be used
+    data: &[i32],
+    _config: &Option<StreamConfig>,
     input_volume: f32,
     output_volume: f32,
     overdrive_enabled: bool,
     threshold: f32,
     gain: f32,
-) -> Vec<f32> {
-    let mut adjusted_data: Vec<f32> = data.iter().map(|&x| x * input_volume).collect();
+) -> Vec<i32> {
+    // Convert i32 to float for processing
+    let mut float_data: Vec<f32> = data.iter().map(|&x| x as f32 / i32::MAX as f32).collect();
 
-    if overdrive_enabled {
-        overdrive::apply_overdrive(&mut adjusted_data, threshold, gain);
+    // Apply input volume
+    for sample in &mut float_data {
+        *sample *= input_volume;
     }
 
-    let processed_data: Vec<f32> = adjusted_data.iter().map(|&x| x * output_volume).collect();
-    processed_data
+    // Apply overdrive if enabled
+    if overdrive_enabled {
+        overdrive::apply_overdrive(&mut float_data, threshold, gain);
+    }
+
+    // Apply output volume and convert back to i32
+    float_data
+        .iter()
+        .map(|&x| (x * output_volume * i32::MAX as f32) as i32)
+        .collect()
 }

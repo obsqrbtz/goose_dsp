@@ -10,9 +10,9 @@ impl GooseDsp {
             let mut reader = hound::WavReader::open(&self.input_file_path).unwrap();
             let spec = reader.spec();
             // WARN: not sure if it should not be mutable. Check later.
-            let samples: Vec<f32> = reader
+            let samples: Vec<i32> = reader
                 .samples::<i16>()
-                .map(|s| s.unwrap() as f32 / i16::MAX as f32)
+                .map(|s| (s.unwrap() as f32 * (i32::MAX as f32 / i16::MAX as f32)) as i32)
                 .collect();
 
             let config = Some(cpal::StreamConfig {
@@ -43,7 +43,7 @@ impl GooseDsp {
 
             let mut writer = hound::WavWriter::create(&self.output_file_path, spec).unwrap();
             for sample in processed_samples.iter() {
-                let scaled_sample = (*sample * i16::MAX as f32) as i16;
+                let scaled_sample = (*sample / (i32::MAX as i32 / i16::MAX as i32)) as i16;
                 writer.write_sample(scaled_sample).unwrap();
             }
             writer.finalize().unwrap();
@@ -53,7 +53,7 @@ impl GooseDsp {
         }
     }
 
-    pub fn play_samples(&mut self, samples: Vec<f32>) {
+    pub fn play_samples(&mut self, samples: Vec<i32>) {
         if self.selected_device.is_none() {
             self.error_message = Some("Please select a device".to_string());
             return;
@@ -91,14 +91,14 @@ impl GooseDsp {
         let stream = device
             .build_output_stream(
                 &config,
-                move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                move |data: &mut [i32], _: &cpal::OutputCallbackInfo| {
                     let mut idx = sample_index_clone.lock().unwrap();
                     for frame in data.chunks_mut(channels) {
                         if *idx >= samples_clone.len() {
-                            frame.iter_mut().for_each(|sample| *sample = 0.0);
+                            frame.iter_mut().for_each(|sample| *sample = 0);
                         } else {
                             frame.iter_mut().for_each(|sample| {
-                                *sample = samples_clone[*idx] * 0.5;
+                                *sample = samples_clone[*idx];
                             });
                             *idx += 1;
                         }

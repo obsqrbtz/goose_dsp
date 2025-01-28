@@ -71,9 +71,9 @@ impl GooseDsp {
                 &config,
                 move |data: &[i32], _: &cpal::InputCallbackInfo| {
                     let config = stream_config.lock().unwrap();
-                    let channel_data: Vec<f32> = data
+                    let channel_data: Vec<i32> = data
                         .chunks(2)
-                        .map(|chunk| chunk[selected_channel] as f32 / i32::MAX as f32)
+                        .map(|chunk| chunk[selected_channel])
                         .collect();
 
                     let processed = dsp::process_audio(
@@ -98,8 +98,10 @@ impl GooseDsp {
                 move |data: &mut [i32], _: &cpal::OutputCallbackInfo| {
                     let processed = processed_audio_clone.lock().unwrap();
                     if !processed.is_empty() {
-                        for (i, sample) in data.iter_mut().enumerate() {
-                            *sample = (processed[i % processed.len()] * i32::MAX as f32) as i32;
+                        for (i, chunk) in data.chunks_mut(2).enumerate() {
+                            let sample = processed[i % processed.len()];
+                            chunk[0] = sample; // Left channel
+                            chunk[1] = sample; // Right channel
                         }
                     }
                 },
