@@ -1,17 +1,42 @@
 use crate::app::waveform;
 use crate::GooseDsp;
-use eframe::egui;
+use eframe::egui::{self, Sense};
 
 impl GooseDsp {
     pub fn update_ui(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Device settings");
+            ui.horizontal(|ui| {
+                // TODO: load logo once
+                egui_extras::install_image_loaders(ctx);
+                ui.add_space(10.0);
+                ui.add(
+                    egui::Image::new(egui::include_image!("../../assets/goose.png"))
+                        .max_width(128.0),
+                );
+                ui.add_space(5.0);
+                ui.heading("Goose DSP").interact(Sense::drag());
+
+                ui.spacing();
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    if ui.button("Settings").clicked() {
+                        // TODO: Handle settings button click
+                    }
+                    if ui.button("About").clicked() {
+                        // TODO: Handle about button click
+                    }
+                });
+            });
+
+            ui.separator();
+
+            ui.heading("Device Settings");
 
             if let Some(error) = &self.error_message {
                 ui.colored_label(egui::Color32::RED, error);
             }
 
             ui.group(|ui| {
+                ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
                         ui.label("Audio Device:");
@@ -132,148 +157,97 @@ impl GooseDsp {
                 });
             });
 
-            ui.separator();
-
+            ui.add_space(5.0);
             ui.heading("Effects");
-            if ui
-                .checkbox(&mut self.overdrive_enabled, "Overdrive")
-                .changed()
-            {
-                if let Ok(mut params) = self.audio_params.lock() {
-                    params.overdrive_enabled = self.overdrive_enabled;
-                }
-            }
-            if self.overdrive_enabled {
-                ui.horizontal(|ui| {
-                    ui.label("Gain:");
-                    if ui
-                        .add(egui::Slider::new(&mut self.overdrive_gain, 1.00..=10.00).text("Gain"))
-                        .changed()
-                    {
-                        if let Ok(mut params) = self.audio_params.lock() {
-                            params.overdrive_gain = self.overdrive_gain;
-                        }
+            ui.group(|ui| {
+                ui.set_width(ui.available_width());
+                if ui
+                    .checkbox(&mut self.overdrive_enabled, "Overdrive")
+                    .changed()
+                {
+                    if let Ok(mut params) = self.audio_params.lock() {
+                        params.overdrive_enabled = self.overdrive_enabled;
                     }
-                });
-            }
-
-            ui.separator();
-
-            if ui.checkbox(&mut self.eq_enabled, "EQ").changed() {
-                if let Ok(mut params) = self.audio_params.lock() {
-                    params.eq_enabled = self.eq_enabled;
                 }
-            }
-            if self.eq_enabled {
-                ui.horizontal(|ui| {
-                    ui.vertical(|ui| {
-                        ui.label("Low");
+                if self.overdrive_enabled {
+                    ui.horizontal(|ui| {
+                        ui.label("Gain:");
                         if ui
-                            .add(egui::Slider::new(&mut self.eq_low, 0.0..=4.0))
+                            .add(
+                                egui::Slider::new(&mut self.overdrive_gain, 1.00..=10.00)
+                                    .text("Gain"),
+                            )
                             .changed()
                         {
                             if let Ok(mut params) = self.audio_params.lock() {
-                                params.eq_low = self.eq_low;
+                                params.overdrive_gain = self.overdrive_gain;
                             }
                         }
                     });
-                    ui.vertical(|ui| {
-                        ui.label("Mid");
-                        if ui
-                            .add(egui::Slider::new(&mut self.eq_mid, 0.0..=4.0))
-                            .changed()
-                        {
-                            if let Ok(mut params) = self.audio_params.lock() {
-                                params.eq_mid = self.eq_mid;
-                            }
-                        }
-                    });
-                    ui.vertical(|ui| {
-                        ui.label("High");
-                        if ui
-                            .add(egui::Slider::new(&mut self.eq_high, 0.0..=4.0))
-                            .changed()
-                        {
-                            if let Ok(mut params) = self.audio_params.lock() {
-                                params.eq_high = self.eq_high;
-                            }
-                        }
-                    });
-                });
-            }
-
-            // ui.separator();
-
-            // ui.heading("WAV File");
-            // ui.horizontal(|ui| {
-            //     ui.label("Source:");
-            //     ui.text_edit_singleline(&mut self.input_file_path);
-            //     if ui.button("Browse").clicked() {
-            //         self.pick_input_file();
-            //     }
-            // });
-            // ui.horizontal(|ui| {
-            //     ui.label("Output:");
-            //     ui.text_edit_singleline(&mut self.output_file_path);
-            //     if ui.button("Browse").clicked() {
-            //         self.pick_output_file();
-            //     }
-            // });
-            // if ui.button("Process File").clicked() {
-            //     self.process_wav_file();
-            // }
-            // ui.separator();
-
-            // ui.horizontal(|ui| {
-            //     ui.radio_value(&mut self.selected_waveform, 0, "Original");
-            //     ui.radio_value(&mut self.selected_waveform, 1, "Processed");
-            // });
-
-            // match self.selected_waveform {
-            //     0 => waveform::Plot::draw(ui, &self.source_samples, "Source Waveform"),
-            //     1 => waveform::Plot::draw(ui, &self.processed_samples, "Processed Waveform"),
-            //     _ => {}
-            // }
-
-            // ui.horizontal(|ui| {
-            //     if ui.button("Play").clicked() {
-            //         if self.selected_waveform == 0 && !self.source_samples.is_empty() {
-            //             self.is_playing_original = true;
-            //             self.is_playing_processed = false;
-            //             self.play_samples(self.source_samples.clone());
-            //         } else if self.selected_waveform == 1 && !self.processed_samples.is_empty() {
-            //             self.is_playing_original = false;
-            //             self.is_playing_processed = true;
-            //             self.play_samples(self.processed_samples.clone());
-            //         }
-            //     }
-            //     if ui.button("Stop").clicked() {
-            //         self.is_playing_original = false;
-            //         self.is_playing_processed = false;
-            //         self.playback_stream = None;
-            //     }
-            // });
-
-            ui.separator();
-
-            if ui.checkbox(&mut self.gate_enabled, "Noise Gate").changed() {
-                if let Ok(mut params) = self.audio_params.lock() {
-                    params.gate_enabled = self.gate_enabled;
                 }
-            }
-            if self.gate_enabled {
-                ui.horizontal(|ui| {
-                    ui.label("Threshold (dB):");
-                    if ui
-                        .add(egui::Slider::new(&mut self.gate_threshold, -60.0..=0.0))
-                        .changed()
-                    {
-                        if let Ok(mut params) = self.audio_params.lock() {
-                            params.gate_threshold = self.gate_threshold;
-                        }
+
+                if ui.checkbox(&mut self.eq_enabled, "EQ").changed() {
+                    if let Ok(mut params) = self.audio_params.lock() {
+                        params.eq_enabled = self.eq_enabled;
                     }
-                });
-            }
+                }
+                if self.eq_enabled {
+                    ui.horizontal(|ui| {
+                        ui.vertical(|ui| {
+                            ui.label("Low");
+                            if ui
+                                .add(egui::Slider::new(&mut self.eq_low, 0.0..=4.0))
+                                .changed()
+                            {
+                                if let Ok(mut params) = self.audio_params.lock() {
+                                    params.eq_low = self.eq_low;
+                                }
+                            }
+                        });
+                        ui.vertical(|ui| {
+                            ui.label("Mid");
+                            if ui
+                                .add(egui::Slider::new(&mut self.eq_mid, 0.0..=4.0))
+                                .changed()
+                            {
+                                if let Ok(mut params) = self.audio_params.lock() {
+                                    params.eq_mid = self.eq_mid;
+                                }
+                            }
+                        });
+                        ui.vertical(|ui| {
+                            ui.label("High");
+                            if ui
+                                .add(egui::Slider::new(&mut self.eq_high, 0.0..=4.0))
+                                .changed()
+                            {
+                                if let Ok(mut params) = self.audio_params.lock() {
+                                    params.eq_high = self.eq_high;
+                                }
+                            }
+                        });
+                    });
+                }
+
+                if ui.checkbox(&mut self.gate_enabled, "Noise Gate").changed() {
+                    if let Ok(mut params) = self.audio_params.lock() {
+                        params.gate_enabled = self.gate_enabled;
+                    }
+                }
+                if self.gate_enabled {
+                    ui.horizontal(|ui| {
+                        ui.label("Threshold (dB):");
+                        if ui
+                            .add(egui::Slider::new(&mut self.gate_threshold, -60.0..=0.0))
+                            .changed()
+                        {
+                            if let Ok(mut params) = self.audio_params.lock() {
+                                params.gate_threshold = self.gate_threshold;
+                            }
+                        }
+                    });
+                }
+            });
         });
     }
 }

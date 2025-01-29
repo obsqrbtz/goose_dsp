@@ -14,6 +14,7 @@ Goose DSP is a guitar amp simulator built in Rust.
 ## TODO
 
 - [x] Select and manage audio devices
+- [ ] Proper bit depth and buffer size selection
 - [ ] Get rid of audio glitches
 - [ ] Linux and macos support
 - [ ] FX modules
@@ -50,7 +51,7 @@ Goose DSP is a guitar amp simulator built in Rust.
 3. **Run the application:**
 
    ```bash
-   cargo run
+   cargo run --bin goose_dsp
    ```
 
 ## Contributing
