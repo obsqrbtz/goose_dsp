@@ -50,8 +50,10 @@ pub fn process_audio(
             params.overdrive_threshold,
             params.overdrive_gain,
         );
-        let cabinet = CabinetSim::new(44100.0);
-        cabinet.process(&mut float_data);
+        if params.cabinet_enabled {
+            let cabinet = CabinetSim::new(44100.0);
+            cabinet.process(&mut float_data);
+        }
     }
 
     float_data

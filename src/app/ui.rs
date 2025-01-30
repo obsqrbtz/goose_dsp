@@ -123,6 +123,12 @@ impl GooseDsp {
             });
         }
 
+        if ui.checkbox(&mut self.cabinet_enabled, "Cabinet").changed() {
+            if let Ok(mut params) = self.audio_params.lock() {
+                params.cabinet_enabled = self.cabinet_enabled;
+            }
+        }
+
         if ui.checkbox(&mut self.eq_enabled, "EQ").changed() {
             if let Ok(mut params) = self.audio_params.lock() {
                 params.eq_enabled = self.eq_enabled;

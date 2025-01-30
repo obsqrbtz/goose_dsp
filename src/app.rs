@@ -43,6 +43,7 @@ pub struct GooseDsp {
     eq_high: f32,
     gate_enabled: bool,
     gate_threshold: f32,
+    cabinet_enabled: bool,
 }
 
 impl GooseDsp {
@@ -105,6 +106,7 @@ impl GooseDsp {
             eq_high: 1.0,
             gate_enabled: false,
             gate_threshold: -40.0,
+            cabinet_enabled: true,
         }
     }
 }

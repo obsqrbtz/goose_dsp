@@ -13,6 +13,7 @@ pub struct AudioParams {
     pub eq_high: f32,
     pub gate_enabled: bool,
     pub gate_threshold: f32,
+    pub cabinet_enabled: bool,
 }
 
 pub type SharedParams = Arc<Mutex<AudioParams>>;
@@ -32,6 +33,7 @@ impl AudioParams {
             overdrive_threshold: threshold,
             overdrive_gain: gain,
             eq_enabled: false,
+            cabinet_enabled: false,
             eq_low: 1.0,
             eq_mid: 1.0,
             eq_high: 1.0,
