@@ -22,13 +22,11 @@ pub struct GooseDsp {
     host: cpal::Host,
     input_volume: f32,
     output_volume: f32,
+    output_level: Arc<Mutex<f32>>,
     overdrive_enabled: bool,
     overdrive_threshold: f32,
     overdrive_gain: f32,
     error_message: Option<String>,
-    is_playing_original: bool,
-    is_playing_processed: bool,
-    playback_stream: Option<cpal::Stream>,
     audio_params: SharedParams,
     eq_enabled: bool,
     eq_low: f32,
@@ -37,6 +35,7 @@ pub struct GooseDsp {
     gate_enabled: bool,
     gate_threshold: f32,
     cabinet_enabled: bool,
+    pub theme: String,
 }
 
 impl GooseDsp {
@@ -77,6 +76,7 @@ impl GooseDsp {
             selected_buffer_size: 256,
             stream: None,
             output_stream: None,
+            output_level: Arc::new(Mutex::new(0.0)),
             stream_config: Arc::new(Mutex::new(None)),
             input_volume: 1.0,
             output_volume: 1.0,
@@ -84,9 +84,6 @@ impl GooseDsp {
             overdrive_threshold: 0.1,
             overdrive_gain: 3.00,
             error_message: None,
-            is_playing_original: false,
-            is_playing_processed: false,
-            playback_stream: None,
             audio_params,
             eq_enabled: false,
             eq_low: 1.0,
@@ -95,6 +92,7 @@ impl GooseDsp {
             gate_enabled: false,
             gate_threshold: -40.0,
             cabinet_enabled: true,
+            theme: "System".to_string(),
         };
 
         goose_dsp.load_settings();
@@ -106,6 +104,7 @@ impl GooseDsp {
 impl eframe::App for GooseDsp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.update_ui(ctx, _frame);
+        ctx.request_repaint();
     }
 }
 

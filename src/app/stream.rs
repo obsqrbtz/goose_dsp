@@ -4,6 +4,11 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::sync::{Arc, Mutex};
 
 impl GooseDsp {
+    pub fn get_output_level(&self) -> f32 {
+        let level = *self.output_level.lock().unwrap();
+        level
+    }
+
     pub fn set_stream(&mut self) {
         self.error_message = None;
 
@@ -97,16 +102,34 @@ impl GooseDsp {
             return;
         }
 
+        let output_level_clone = Arc::clone(&self.output_level);
+
         let output_stream_result = device.build_output_stream(
             &config,
             move |data: &mut [i32], _: &cpal::OutputCallbackInfo| {
                 let processed = processed_audio_clone.lock().unwrap();
                 if !processed.is_empty() {
+                    let mut sum_squares = 0.0;
+                    let mut peak = 0;
+
                     for (i, chunk) in data.chunks_mut(2).enumerate() {
                         let sample = processed[i % processed.len()];
                         chunk[0] = sample; // Left channel
                         chunk[1] = sample; // Right channel
+
+                        let abs_sample = sample.abs();
+                        if abs_sample > peak {
+                            peak = abs_sample;
+                        }
+
+                        sum_squares += (sample as f32).powi(2);
                     }
+
+                    let rms = (sum_squares / processed.len() as f32).sqrt();
+                    let peak_level = peak as f32 / i32::MAX as f32; // Normalize to 0.0 - 1.0
+                    let rms_level = rms / i32::MAX as f32; // Normalize to 0.0 - 1.0
+
+                    *output_level_clone.lock().unwrap() = rms_level.max(peak_level);
                 }
             },
             move |err| eprintln!("Output error: {}", err),

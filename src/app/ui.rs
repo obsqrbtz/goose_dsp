@@ -1,9 +1,10 @@
 use crate::GooseDsp;
-use eframe::egui::{self};
+use eframe::egui::{self, Painter, Rect, Rgba, Stroke, ThemePreference, Visuals};
 
 impl GooseDsp {
     pub fn update_ui(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui_extras::install_image_loaders(ctx);
+
         let panel_frame = egui::Frame::default()
             .fill(ctx.style().visuals.window_fill())
             .stroke(ctx.style().visuals.widgets.noninteractive.bg_stroke)
@@ -42,6 +43,17 @@ impl GooseDsp {
             });
     }
 
+    fn draw_volume_meter(&self, painter: &Painter, rect: Rect, level: f32) {
+        let height = rect.height() * level;
+        let filled_rect = Rect::from_min_max(egui::pos2(rect.min.x, rect.max.y - height), rect.max);
+
+        painter.rect_filled(rect, 2.0, Rgba::from_black_alpha(0.2));
+        let color = Rgba::from_rgb(0.1 + level * 0.9, 0.8 - level * 0.5, 0.2);
+        painter.rect_filled(filled_rect, 2.0, color);
+
+        painter.rect_stroke(rect, 0.0, Stroke::new(1.5, Rgba::from_black_alpha(0.5)));
+    }
+
     fn device_settings_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
@@ -59,6 +71,15 @@ impl GooseDsp {
                 self.combo_box_bit_depth(ui);
                 self.combo_box_buffer_size(ui);
             });
+
+            ui.vertical(|ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::RIGHT), |ui| {
+                    let (rect, _) =
+                        ui.allocate_exact_size(egui::vec2(20.0, 100.0), egui::Sense::hover());
+                    let painter = ui.painter();
+                    self.draw_volume_meter(painter, rect, self.get_output_level());
+                });
+            })
         });
     }
 
@@ -82,7 +103,6 @@ impl GooseDsp {
                     if titlebar_response.is_pointer_button_down_on() {
                         ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                     }
-
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                         if ui.button("✖").clicked() {
                             let ctx = ctx.clone();
@@ -96,9 +116,33 @@ impl GooseDsp {
                                 ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
                             });
                         }
+
+                        self.theme_toggle(ctx, ui);
                     });
                 });
             });
+    }
+
+    fn theme_toggle(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        let mut theme_preference = &ui.ctx().options(|opt| opt.theme_preference);
+        ui.horizontal(|ui| {
+            if ui
+                .selectable_value(&mut theme_preference, &ThemePreference::Light, "☀ Light")
+                .clicked()
+            {
+                self.theme = "Light".to_string();
+                ctx.set_visuals(Visuals::light());
+                self.save_settings();
+            }
+            if ui
+                .selectable_value(&mut theme_preference, &ThemePreference::Dark, "🌙 Dark")
+                .clicked()
+            {
+                self.theme = "Dark".to_string();
+                ctx.set_visuals(Visuals::dark());
+                self.save_settings();
+            }
+        });
     }
 
     fn volume_ui(&mut self, ui: &mut egui::Ui) {
