@@ -5,13 +5,11 @@ pub struct CabinetSim {
 
 impl CabinetSim {
     pub fn new(sample_rate: f32) -> Self {
-        // Simple IR coefficients simulating a 4x12 cabinet
         let mut coeffs = vec![
-            1.0, 0.8, 0.6, 0.4, 0.2, 0.1, 0.05, 0.025, 0.0125, 0.00625, 0.003125, 0.001563,
-            0.000781, 0.000391,
+            1.0, 0.9, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.025, 0.0125, 0.00625, 0.003125, 0.001563,
+            0.000781, 0.000391, 0.000195, 0.0001,
         ];
 
-        // Normalize coefficients
         let sum: f32 = coeffs.iter().sum();
         for coeff in coeffs.iter_mut() {
             *coeff /= sum;
