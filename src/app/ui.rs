@@ -4,70 +4,42 @@ use eframe::egui::{self};
 impl GooseDsp {
     pub fn update_ui(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui_extras::install_image_loaders(ctx);
-        let logo =
-            egui::Image::new(egui::include_image!("../../assets/goose.png")).max_width(128.0);
+        let panel_frame = egui::Frame::default()
+            .fill(ctx.style().visuals.window_fill())
+            .stroke(ctx.style().visuals.widgets.noninteractive.bg_stroke)
+            .outer_margin(egui::Vec2::new(1.0, 1.0))
+            .inner_margin(10.0);
 
-        egui::TopBottomPanel::top("custom_titlebar").show(ctx, |ui| {
-            ui.add_space(10.0);
-            ui.horizontal(|ui| {
-                ui.add_space(10.0);
-                ui.add(logo);
+        self.show_titlebar(ctx, panel_frame);
+
+        egui::CentralPanel::default()
+            .frame(panel_frame)
+            .show(ctx, |ui| {
+                ui.heading("Device Settings");
+
+                if let Some(error) = &self.error_message {
+                    ui.colored_label(egui::Color32::RED, error);
+                }
+
+                ui.group(|ui| {
+                    ui.set_width(ui.available_width());
+                    self.device_settings_ui(ui);
+                });
+
                 ui.add_space(5.0);
-                ui.heading("Goose DSP");
+                ui.heading("Volume");
+                ui.group(|ui| {
+                    ui.set_width(ui.available_width());
+                    self.volume_ui(ui);
+                });
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.button("✖").clicked() {
-                        let ctx = ctx.clone();
-                        std::thread::spawn(move || {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                        });
-                    }
-                    if ui.button("🗖").clicked() {
-                        let ctx = ctx.clone();
-                        std::thread::spawn(move || {
-                            let mut maximized = false;
-                            ctx.input(|i| {
-                                maximized = i.viewport().maximized.unwrap();
-                            });
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-                        });
-                    }
-                    if ui.button("🗕").clicked() {
-                        let ctx = ctx.clone();
-                        std::thread::spawn(move || {
-                            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
-                        });
-                    }
+                ui.add_space(5.0);
+                ui.heading("Effects");
+                ui.group(|ui| {
+                    ui.set_width(ui.available_width());
+                    self.effects_ui(ui);
                 });
             });
-            ui.add_space(10.0);
-        });
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Device Settings");
-
-            if let Some(error) = &self.error_message {
-                ui.colored_label(egui::Color32::RED, error);
-            }
-
-            ui.group(|ui| {
-                ui.set_width(ui.available_width());
-                self.device_settings_ui(ui);
-            });
-
-            ui.add_space(5.0);
-            ui.heading("Volume");
-            ui.group(|ui| {
-                ui.set_width(ui.available_width());
-                self.volume_ui(ui);
-            });
-
-            ui.add_space(5.0);
-            ui.heading("Effects");
-            ui.group(|ui| {
-                ui.set_width(ui.available_width());
-                self.effects_ui(ui);
-            });
-        });
     }
 
     fn device_settings_ui(&mut self, ui: &mut egui::Ui) {
@@ -88,6 +60,45 @@ impl GooseDsp {
                 self.combo_box_buffer_size(ui);
             });
         });
+    }
+
+    fn show_titlebar(&mut self, ctx: &egui::Context, frame: egui::Frame) {
+        let logo =
+            egui::Image::new(egui::include_image!("../../assets/goose.png")).max_width(128.0);
+        egui::TopBottomPanel::top("titlebar")
+            .frame(frame)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add(logo);
+                    ui.add_space(5.0);
+                    ui.heading("Goose DSP");
+
+                    let titlebar_response = ui.interact(
+                        ui.max_rect(),
+                        ui.id().with("titlebar"),
+                        egui::Sense::click_and_drag(),
+                    );
+
+                    if titlebar_response.is_pointer_button_down_on() {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                    }
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                        if ui.button("✖").clicked() {
+                            let ctx = ctx.clone();
+                            std::thread::spawn(move || {
+                                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                            });
+                        }
+                        if ui.button("🗕").clicked() {
+                            let ctx = ctx.clone();
+                            std::thread::spawn(move || {
+                                ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                            });
+                        }
+                    });
+                });
+            });
     }
 
     fn volume_ui(&mut self, ui: &mut egui::Ui) {
