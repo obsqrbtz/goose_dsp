@@ -7,25 +7,42 @@ impl GooseDsp {
         let logo =
             egui::Image::new(egui::include_image!("../../assets/goose.png")).max_width(128.0);
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::TopBottomPanel::top("custom_titlebar").show(ctx, |ui| {
+            ui.add_space(10.0);
             ui.horizontal(|ui| {
                 ui.add_space(10.0);
                 ui.add(logo);
                 ui.add_space(5.0);
                 ui.heading("Goose DSP");
 
-                ui.spacing();
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                    if ui.button("Settings").clicked() {
-                        // TODO: Show settings panel
+                    if ui.button("✖").clicked() {
+                        let ctx = ctx.clone();
+                        std::thread::spawn(move || {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        });
                     }
-                    if ui.button("About").clicked() {
-                        // TODO: Show about panel
+                    if ui.button("🗖").clicked() {
+                        let ctx = ctx.clone();
+                        std::thread::spawn(move || {
+                            let mut maximized = false;
+                            ctx.input(|i| {
+                                maximized = i.viewport().maximized.unwrap();
+                            });
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+                        });
+                    }
+                    if ui.button("🗕").clicked() {
+                        let ctx = ctx.clone();
+                        std::thread::spawn(move || {
+                            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
+                        });
                     }
                 });
             });
-
-            ui.separator();
+            ui.add_space(10.0);
+        });
+        egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Device Settings");
 
             if let Some(error) = &self.error_message {
