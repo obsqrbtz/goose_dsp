@@ -1,4 +1,3 @@
-use crate::app::waveform;
 use crate::GooseDsp;
 use eframe::egui::{self};
 
@@ -208,6 +207,7 @@ impl GooseDsp {
             });
         if self.selected_device != previous_device {
             self.set_stream();
+            self.save_settings();
         }
     }
 
@@ -226,6 +226,7 @@ impl GooseDsp {
             });
         if self.selected_input_channel != previous_channel {
             self.set_stream();
+            self.save_settings();
         }
     }
 
@@ -244,6 +245,7 @@ impl GooseDsp {
             });
         if self.selected_sample_rate != previous_rate {
             self.set_stream();
+            self.save_settings();
         }
     }
 
@@ -262,6 +264,7 @@ impl GooseDsp {
             });
         if self.selected_bit_depth != previous_depth {
             self.set_stream();
+            self.save_settings();
         }
     }
 
@@ -280,6 +283,7 @@ impl GooseDsp {
             });
         if self.selected_buffer_size != previous_buffer {
             self.set_stream();
+            self.save_settings();
         }
     }
 }

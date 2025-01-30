@@ -3,11 +3,9 @@ use eframe::egui;
 use std::sync::{Arc, Mutex};
 
 mod dsp;
-mod file;
+mod settings;
 mod stream;
 mod ui;
-mod wav;
-mod waveform;
 
 use dsp::params::SharedParams;
 
@@ -27,11 +25,6 @@ pub struct GooseDsp {
     overdrive_enabled: bool,
     overdrive_threshold: f32,
     overdrive_gain: f32,
-    input_file_path: String,
-    output_file_path: String,
-    source_samples: Vec<i32>,
-    processed_samples: Vec<i32>,
-    selected_waveform: usize,
     error_message: Option<String>,
     is_playing_original: bool,
     is_playing_processed: bool,
@@ -74,7 +67,7 @@ impl GooseDsp {
             3.00, // gain
         )));
 
-        GooseDsp {
+        let mut goose_dsp = GooseDsp {
             host,
             available_devices: devices,
             selected_device: None,
@@ -90,11 +83,6 @@ impl GooseDsp {
             overdrive_enabled: true,
             overdrive_threshold: 0.1,
             overdrive_gain: 3.00,
-            input_file_path: String::new(),
-            output_file_path: String::new(),
-            source_samples: Vec::new(),
-            processed_samples: Vec::new(),
-            selected_waveform: 0,
             error_message: None,
             is_playing_original: false,
             is_playing_processed: false,
@@ -107,7 +95,11 @@ impl GooseDsp {
             gate_enabled: false,
             gate_threshold: -40.0,
             cabinet_enabled: true,
-        }
+        };
+
+        goose_dsp.load_settings();
+
+        goose_dsp
     }
 }
 
