@@ -98,7 +98,7 @@ impl GooseDsp {
         };
 
         goose_dsp.load_settings();
-
+        goose_dsp.set_stream();
         goose_dsp
     }
 }

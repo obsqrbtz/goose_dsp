@@ -67,50 +67,59 @@ impl GooseDsp {
         let processed_audio = Arc::new(Mutex::new(Vec::new()));
         let processed_audio_clone = Arc::clone(&processed_audio);
 
-        let input_stream = device
-            .build_input_stream(
-                &config,
-                move |data: &[i32], _: &cpal::InputCallbackInfo| {
-                    let config = stream_config.lock().unwrap();
-                    let channel_data: Vec<i32> = data
-                        .chunks(2)
-                        .map(|chunk| chunk[selected_channel])
-                        .collect();
+        let input_stream_result = device.build_input_stream(
+            &config,
+            move |data: &[i32], _: &cpal::InputCallbackInfo| {
+                let config = stream_config.lock().unwrap();
+                let channel_data: Vec<i32> = data
+                    .chunks(2)
+                    .map(|chunk| chunk[selected_channel])
+                    .collect();
 
-                    let processed = dsp::process_audio(
-                        &channel_data,
-                        &config,
-                        input_volume,
-                        output_volume,
-                        overdrive_enabled,
-                        threshold,
-                        gain,
-                        &audio_params,
-                    );
-                    *processed_audio.lock().unwrap() = processed;
-                },
-                move |err| eprintln!("Input error: {}", err),
-                None,
-            )
-            .expect("failed to build input stream");
+                let processed = dsp::process_audio(
+                    &channel_data,
+                    &config,
+                    input_volume,
+                    output_volume,
+                    overdrive_enabled,
+                    threshold,
+                    gain,
+                    &audio_params,
+                );
+                *processed_audio.lock().unwrap() = processed;
+            },
+            move |err| eprintln!("Input error: {}", err),
+            None,
+        );
 
-        let output_stream = device
-            .build_output_stream(
-                &config,
-                move |data: &mut [i32], _: &cpal::OutputCallbackInfo| {
-                    let processed = processed_audio_clone.lock().unwrap();
-                    if !processed.is_empty() {
-                        for (i, chunk) in data.chunks_mut(2).enumerate() {
-                            let sample = processed[i % processed.len()];
-                            chunk[0] = sample; // Left channel
-                            chunk[1] = sample; // Right channel
-                        }
+        if let Err(err) = input_stream_result {
+            self.error_message = Some(format!("Failed to build input stream: {}", err));
+            return;
+        }
+
+        let output_stream_result = device.build_output_stream(
+            &config,
+            move |data: &mut [i32], _: &cpal::OutputCallbackInfo| {
+                let processed = processed_audio_clone.lock().unwrap();
+                if !processed.is_empty() {
+                    for (i, chunk) in data.chunks_mut(2).enumerate() {
+                        let sample = processed[i % processed.len()];
+                        chunk[0] = sample; // Left channel
+                        chunk[1] = sample; // Right channel
                     }
-                },
-                move |err| eprintln!("Output error: {}", err),
-                None,
-            )
-            .expect("failed to build output stream");
+                }
+            },
+            move |err| eprintln!("Output error: {}", err),
+            None,
+        );
+
+        if let Err(err) = output_stream_result {
+            self.error_message = Some(format!("Failed to build output stream: {}", err));
+            return;
+        }
+
+        let input_stream = input_stream_result.expect("failed to build input stream");
+        let output_stream = output_stream_result.expect("failed to build output stream");
 
         input_stream.play().expect("failed to start input stream");
         output_stream.play().expect("failed to start output stream");
