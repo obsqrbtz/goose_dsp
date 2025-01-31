@@ -36,6 +36,7 @@ pub struct GooseDsp {
     gate_threshold: f32,
     cabinet_enabled: bool,
     pub theme: String,
+    show_about: bool,
 }
 
 impl GooseDsp {
@@ -93,6 +94,7 @@ impl GooseDsp {
             gate_threshold: -40.0,
             cabinet_enabled: true,
             theme: "System".to_string(),
+            show_about: false,
         };
 
         goose_dsp.load_settings();

@@ -13,6 +13,10 @@ impl GooseDsp {
 
         self.show_titlebar(ctx, panel_frame);
 
+        if self.show_about {
+            self.show_about_window(ctx);
+        }
+
         egui::CentralPanel::default()
             .frame(panel_frame)
             .show(ctx, |ui| {
@@ -52,6 +56,59 @@ impl GooseDsp {
         painter.rect_filled(filled_rect, 2.0, color);
 
         painter.rect_stroke(rect, 0.0, Stroke::new(1.5, Rgba::from_black_alpha(0.5)));
+    }
+
+    pub fn show_about_window(&mut self, ctx: &egui::Context) {
+        egui::Window::new("About Goose DSP")
+            .resizable(false)
+            .collapsible(false)
+            .show(ctx, |ui| {
+                ui.heading("Goose DSP");
+                ui.label("Version 1.0.0, 2025");
+                ui.label("Guitar amp simulator");
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(
+                            egui::Button::image_and_text(
+                                egui::include_image!("../../assets/icons/github.png"),
+                                " GitHub",
+                            )
+                            .frame(false)
+                            .sense(egui::Sense::click()),
+                        )
+                        .clicked()
+                    {
+                        ui.output_mut(|o| {
+                            o.open_url = Some(egui::output::OpenUrl::same_tab(
+                                "https://github.com/obsqrbtz/goose_dsp",
+                            ))
+                        });
+                    }
+                });
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(
+                            egui::Button::image_and_text(
+                                egui::include_image!("../../assets/icons/email.png"),
+                                " Email",
+                            )
+                            .frame(false)
+                            .sense(egui::Sense::click()),
+                        )
+                        .clicked()
+                    {
+                        ui.output_mut(|o| {
+                            o.open_url =
+                                Some(egui::output::OpenUrl::same_tab("mailto:dan@obsqrbtz.space"))
+                        });
+                    }
+                });
+                ui.separator();
+
+                if ui.button("Close").clicked() {
+                    self.show_about = false;
+                }
+            });
     }
 
     fn device_settings_ui(&mut self, ui: &mut egui::Ui) {
@@ -115,6 +172,10 @@ impl GooseDsp {
                             std::thread::spawn(move || {
                                 ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(true));
                             });
+                        }
+
+                        if ui.button(" ? ").clicked() {
+                            self.show_about = true;
                         }
 
                         self.theme_toggle(ctx, ui);
