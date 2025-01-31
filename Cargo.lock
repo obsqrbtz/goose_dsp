@@ -1252,6 +1252,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_knob"
+version = "0.1.0"
+source = "git+https://github.com/obsqrbtz/egui_knob#beb338d44d4b76d988da7672c5ecbcbec0238af7"
+dependencies = [
+ "eframe",
+ "egui",
+]
+
+[[package]]
 name = "egui_plot"
 version = "0.30.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1724,6 +1733,7 @@ dependencies = [
  "dirs",
  "eframe",
  "egui_extras",
+ "egui_knob",
  "egui_plot",
  "hound",
  "image",

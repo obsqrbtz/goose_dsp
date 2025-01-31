@@ -1,5 +1,6 @@
 use crate::GooseDsp;
 use eframe::egui::{self, Painter, Rect, Rgba, Stroke, ThemePreference, Visuals};
+use egui_knob;
 
 impl GooseDsp {
     pub fn update_ui(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -208,27 +209,25 @@ impl GooseDsp {
 
     fn volume_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label("Input:");
             if ui
-                .add(egui::Slider::new(&mut self.input_volume, 0.0..=1.0))
+                .add(egui_knob::Knob::new(&mut self.input_volume, 0.0, 1.0))
                 .changed()
             {
                 if let Ok(mut params) = self.audio_params.lock() {
                     params.input_volume = self.input_volume;
                 }
             }
-        });
+            ui.label(format!("In: {:.2}", &mut self.input_volume));
 
-        ui.horizontal(|ui| {
-            ui.label("Output:");
             if ui
-                .add(egui::Slider::new(&mut self.output_volume, 0.0..=1.0))
+                .add(egui_knob::Knob::new(&mut self.output_volume, 0.0, 1.0))
                 .changed()
             {
                 if let Ok(mut params) = self.audio_params.lock() {
-                    params.output_volume = self.output_volume;
+                    params.input_volume = self.output_volume;
                 }
             }
+            ui.label(format!("Out: {:.2}", &mut self.output_volume));
         });
     }
 
