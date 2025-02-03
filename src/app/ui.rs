@@ -1,6 +1,6 @@
 use crate::GooseDsp;
 use eframe::egui::{self, Painter, Rect, Rgba, Stroke, ThemePreference, Visuals};
-use egui_knob;
+use egui_knob::{self, Knob};
 
 impl GooseDsp {
     pub fn update_ui(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -210,25 +210,42 @@ impl GooseDsp {
     fn volume_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             if ui
-                .add(egui_knob::Knob::new(&mut self.input_volume, 0.0, 1.0))
+                .add(
+                    Knob::new(
+                        &mut self.input_volume,
+                        0.0,
+                        1.0,
+                        egui_knob::KnobStyle::Wiper,
+                    )
+                    .with_size(30.0)
+                    .with_label("In", egui_knob::LabelPosition::Bottom),
+                )
                 .changed()
             {
                 if let Ok(mut params) = self.audio_params.lock() {
                     params.input_volume = self.input_volume;
                 }
             }
-            ui.label(format!("In: {:.2}", &mut self.input_volume));
 
             if ui
-                .add(egui_knob::Knob::new(&mut self.output_volume, 0.0, 1.0))
+                .add(
+                    Knob::new(
+                        &mut self.output_volume,
+                        0.0,
+                        1.0,
+                        egui_knob::KnobStyle::Wiper,
+                    )
+                    .with_size(30.0)
+                    .with_label("Out", egui_knob::LabelPosition::Bottom),
+                )
                 .changed()
             {
                 if let Ok(mut params) = self.audio_params.lock() {
                     params.input_volume = self.output_volume;
                 }
             }
-            ui.label(format!("Out: {:.2}", &mut self.output_volume));
         });
+        ui.add_space(20.0);
     }
 
     fn effects_ui(&mut self, ui: &mut egui::Ui) {
@@ -242,9 +259,17 @@ impl GooseDsp {
         }
         if self.overdrive_enabled {
             ui.horizontal(|ui| {
-                ui.label("Gain:");
                 if ui
-                    .add(egui::Slider::new(&mut self.overdrive_gain, 1.00..=10.00).text("Gain"))
+                    .add(
+                        Knob::new(
+                            &mut self.overdrive_gain,
+                            1.00,
+                            10.00,
+                            egui_knob::KnobStyle::Wiper,
+                        )
+                        .with_size(30.0)
+                        .with_label("Gain", egui_knob::LabelPosition::Bottom),
+                    )
                     .changed()
                 {
                     if let Ok(mut params) = self.audio_params.lock() {
@@ -252,6 +277,7 @@ impl GooseDsp {
                     }
                 }
             });
+            ui.add_space(15.0);
         }
 
         if ui.checkbox(&mut self.cabinet_enabled, "Cabinet").changed() {
@@ -276,15 +302,24 @@ impl GooseDsp {
         }
         if self.gate_enabled {
             ui.horizontal(|ui| {
-                ui.label("Threshold (dB):");
                 if ui
-                    .add(egui::Slider::new(&mut self.gate_threshold, -60.0..=0.0))
+                    .add(
+                        Knob::new(
+                            &mut self.gate_threshold,
+                            -60.0,
+                            0.0,
+                            egui_knob::KnobStyle::Wiper,
+                        )
+                        .with_size(30.0)
+                        .with_label("Threshold", egui_knob::LabelPosition::Right),
+                    )
                     .changed()
                 {
                     if let Ok(mut params) = self.audio_params.lock() {
                         params.gate_threshold = self.gate_threshold;
                     }
                 }
+                ui.add_space(30.0);
             });
         }
     }
@@ -292,9 +327,12 @@ impl GooseDsp {
     fn eq_settings_ui(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
-                ui.label("Low");
                 if ui
-                    .add(egui::Slider::new(&mut self.eq_low, 0.0..=4.0))
+                    .add(
+                        Knob::new(&mut self.eq_low, 0.0, 4.0, egui_knob::KnobStyle::Wiper)
+                            .with_size(30.0)
+                            .with_label("Low", egui_knob::LabelPosition::Bottom),
+                    )
                     .changed()
                 {
                     if let Ok(mut params) = self.audio_params.lock() {
@@ -303,9 +341,12 @@ impl GooseDsp {
                 }
             });
             ui.vertical(|ui| {
-                ui.label("Mid");
                 if ui
-                    .add(egui::Slider::new(&mut self.eq_mid, 0.0..=4.0))
+                    .add(
+                        Knob::new(&mut self.eq_mid, 0.0, 4.0, egui_knob::KnobStyle::Wiper)
+                            .with_size(30.0)
+                            .with_label("Mid", egui_knob::LabelPosition::Bottom),
+                    )
                     .changed()
                 {
                     if let Ok(mut params) = self.audio_params.lock() {
@@ -314,9 +355,12 @@ impl GooseDsp {
                 }
             });
             ui.vertical(|ui| {
-                ui.label("High");
                 if ui
-                    .add(egui::Slider::new(&mut self.eq_high, 0.0..=4.0))
+                    .add(
+                        Knob::new(&mut self.eq_high, 0.0, 4.0, egui_knob::KnobStyle::Wiper)
+                            .with_size(30.0)
+                            .with_label("High", egui_knob::LabelPosition::Bottom),
+                    )
                     .changed()
                 {
                     if let Ok(mut params) = self.audio_params.lock() {
@@ -325,6 +369,7 @@ impl GooseDsp {
                 }
             });
         });
+        ui.add_space(15.0);
     }
 
     fn combo_box_audio_device(&mut self, ui: &mut egui::Ui) {
