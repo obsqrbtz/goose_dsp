@@ -39,9 +39,8 @@ impl GooseDsp {
                     self.volume_ui(ui);
                 });
 
-                ui.add_space(5.0);
                 ui.heading("Effects");
-                ui.group(|ui| {
+                egui::ScrollArea::vertical().show(ui, |ui| {
                     ui.set_width(ui.available_width());
                     self.effects_ui(ui);
                 });
@@ -245,7 +244,6 @@ impl GooseDsp {
                 }
             }
         });
-        ui.add_space(20.0);
     }
 
     fn effects_ui(&mut self, ui: &mut egui::Ui) {
