@@ -240,7 +240,7 @@ impl GooseDsp {
                 .changed()
             {
                 if let Ok(mut params) = self.audio_params.lock() {
-                    params.input_volume = self.output_volume;
+                    params.output_volume = self.output_volume;
                 }
             }
         });
