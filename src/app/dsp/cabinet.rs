@@ -1,10 +1,9 @@
 pub struct CabinetSim {
-    sample_rate: f32,
     coefficients: Vec<f32>,
 }
 
 impl CabinetSim {
-    pub fn new(sample_rate: f32) -> Self {
+    pub fn new() -> Self {
         let mut coeffs = vec![
             1.0, 0.9, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.025, 0.0125, 0.00625, 0.003125, 0.001563,
             0.000781, 0.000391, 0.000195, 0.0001,
@@ -16,7 +15,6 @@ impl CabinetSim {
         }
 
         CabinetSim {
-            sample_rate,
             coefficients: coeffs,
         }
     }

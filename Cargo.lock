@@ -1253,9 +1253,9 @@ dependencies = [
 
 [[package]]
 name = "egui_knob"
-version = "0.1.6"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "194a8277b64b977bf60e346bc96cd0688b5adf4220f76072431c49b71e30a1f1"
+checksum = "cd36cd03af2f793342624e37608cdfe1a1fc19ccf683871403648dd9ed3e41df"
 dependencies = [
  "egui",
 ]

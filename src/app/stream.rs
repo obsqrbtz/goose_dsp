@@ -61,11 +61,6 @@ impl GooseDsp {
         println!("  Buffer Size: {:?}", config.buffer_size);
 
         let stream_config = Arc::clone(&self.stream_config);
-        let input_volume = self.input_volume;
-        let output_volume = self.output_volume;
-        let overdrive_enabled = self.overdrive_enabled;
-        let threshold = self.overdrive_threshold;
-        let gain = self.overdrive_gain;
         let selected_channel = self.selected_input_channel;
         let audio_params = Arc::clone(&self.audio_params);
 
@@ -81,16 +76,7 @@ impl GooseDsp {
                     .map(|chunk| chunk[selected_channel])
                     .collect();
 
-                let processed = dsp::process_audio(
-                    &channel_data,
-                    &config,
-                    input_volume,
-                    output_volume,
-                    overdrive_enabled,
-                    threshold,
-                    gain,
-                    &audio_params,
-                );
+                let processed = dsp::process_audio(&channel_data, &config, &audio_params);
                 *processed_audio.lock().unwrap() = processed;
             },
             move |err| eprintln!("Input error: {}", err),

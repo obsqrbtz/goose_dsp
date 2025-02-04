@@ -6,7 +6,6 @@ pub struct EQ {
     high_freq: f32,
     sample_rate: f32,
     low_prev: f32,
-    mid_prev: f32,
     high_prev: f32,
 }
 
@@ -20,7 +19,6 @@ impl EQ {
             high_freq: 2500.0,
             sample_rate,
             low_prev: 0.0,
-            mid_prev: 0.0,
             high_prev: 0.0,
         }
     }

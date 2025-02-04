@@ -12,11 +12,6 @@ use self::gate::NoiseGate;
 pub fn process_audio(
     data: &[i32],
     _config: &Option<StreamConfig>,
-    input_volume: f32,
-    output_volume: f32,
-    overdrive_enabled: bool,
-    threshold: f32,
-    gain: f32,
     audio_params: &params::SharedParams,
 ) -> Vec<i32> {
     let params = audio_params.lock().unwrap();
@@ -51,7 +46,7 @@ pub fn process_audio(
             params.overdrive_gain,
         );
         if params.cabinet_enabled {
-            let cabinet = CabinetSim::new(44100.0);
+            let cabinet = CabinetSim::new();
             cabinet.process(&mut float_data);
         }
     }
