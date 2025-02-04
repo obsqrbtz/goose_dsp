@@ -51,12 +51,18 @@ impl GooseDsp {
         #[cfg(any(target_os = "linux", target_os = "macos"))]
         let host = cpal::default_host();
 
-        let devices: Vec<String> = host
-            .devices()
-            .unwrap()
-            .filter(|d| d.supported_input_configs().is_ok() && d.supported_output_configs().is_ok())
-            .map(|d| d.name().unwrap())
-            .collect();
+        let devices: Vec<String> = match host.devices() {
+            Ok(devices) => devices
+                .filter(|d| {
+                    d.supported_input_configs().is_ok() && d.supported_output_configs().is_ok()
+                })
+                .filter_map(|d| d.name().ok())
+                .collect(),
+            Err(e) => {
+                eprintln!("Error enumerating audio devices: {}", e);
+                Vec::new()
+            }
+        };
 
         let audio_params = Arc::new(Mutex::new(dsp::params::AudioParams::new(
             1.0,  // input_volume
