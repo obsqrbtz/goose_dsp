@@ -55,7 +55,7 @@ impl GooseDsp {
         let color = Rgba::from_rgb(0.1 + level * 0.9, 0.8 - level * 0.5, 0.2);
         painter.rect_filled(filled_rect, 2.0, color);
 
-        painter.rect_stroke(rect, 0.0, Stroke::new(1.5, Rgba::from_black_alpha(0.5)));
+        painter.rect_stroke(rect, 0.0, Stroke::new(1.5, Rgba::from_black_alpha(0.5)), egui::StrokeKind::Outside);
     }
 
     pub fn show_about_window(&mut self, ctx: &egui::Context) {
@@ -78,10 +78,9 @@ impl GooseDsp {
                         )
                         .clicked()
                     {
-                        ui.output_mut(|o| {
-                            o.open_url = Some(egui::output::OpenUrl::same_tab(
-                                "https://github.com/obsqrbtz/goose_dsp",
-                            ))
+                        ctx.open_url(egui::output::OpenUrl {
+                            url: "https://github.com/obsqrbtz/goose_dsp".to_string(),
+                            new_tab: false,
                         });
                     }
                 });
@@ -97,12 +96,12 @@ impl GooseDsp {
                         )
                         .clicked()
                     {
-                        ui.output_mut(|o| {
-                            o.open_url =
-                                Some(egui::output::OpenUrl::same_tab("mailto:dan@obsqrbtz.space"))
-                        });
+                        ctx.open_url(egui::output::OpenUrl{
+                            url: "mailto:dan@binarygoose.dev".to_string(),
+                            new_tab: false});
+                        }
                     }
-                });
+                );
                 ui.separator();
 
                 if ui.button("Close").clicked() {
