@@ -308,7 +308,7 @@ impl GooseDsp {
                             egui_knob::KnobStyle::Wiper,
                         )
                         .with_size(30.0)
-                        .with_label("Threshold", egui_knob::LabelPosition::Right),
+                        .with_label("Threshold", egui_knob::LabelPosition::Bottom),
                     )
                     .changed()
                 {

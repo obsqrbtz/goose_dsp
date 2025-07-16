@@ -27,7 +27,7 @@ rfd = "0.15.2"
 toml = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 dirs = "6.0"
-egui_knob = "0.3.1"
+egui_knob = "0.3.3"
 
 [dev-dependencies]
 hound = "3.5"
